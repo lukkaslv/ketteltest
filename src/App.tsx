@@ -717,7 +717,7 @@ export default function App() {
               {/* Likert Scale */}
               <div className={`grid gap-1 sm:gap-4 xl:gap-6 relative px-1 sm:px-4 w-full`} style={{ gridTemplateColumns: `repeat(${likertOptions.length}, minmax(0, 1fr))` }}>
                 {/* Connection Line */}
-                <div className="absolute top-5 sm:top-6 left-[10%] right-[10%] h-px bg-slate-300 -z-10"></div>
+                <div className="absolute top-6 sm:top-7 left-[10%] right-[10%] h-px bg-slate-300 -z-10"></div>
                 
                 {likertOptions.map((opt) => {
                   const isSelected = currentAnswer === opt.value;
@@ -728,16 +728,16 @@ export default function App() {
                       onClick={() => handleAnswer(opt.value)}
                     >
                       <button 
-                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all duration-200 flex items-center justify-center
+                        className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full transition-all duration-200 flex items-center justify-center flex-shrink-0
                         ${isSelected 
                           ? 'border-4 border-indigo-600 bg-indigo-50 shadow-lg shadow-indigo-200 scale-110' 
                           : 'border-2 border-slate-300 bg-white group-hover:border-indigo-400 group-hover:bg-slate-50'
                         }`}
                       >
-                        {isSelected && <Check className="w-5 h-5 text-indigo-600" />}
+                        {isSelected && <Check className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />}
                       </button>
-                      <span className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-tighter text-center leading-tight transition-colors px-0.5 mt-1
-                        ${isSelected ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                      <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-tighter text-center leading-tight transition-colors px-0.5 mt-1
+                        ${isSelected ? 'text-indigo-600' : 'text-slate-500 group-hover:text-slate-700'}`}>
                         {opt.label}
                       </span>
                     </div>
@@ -785,8 +785,8 @@ export default function App() {
               ${currentIndex === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:text-slate-800'}`}
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">Предыдущее</span>
-            <span className="sm:hidden">Назад</span>
+            <span className="hidden sm:inline">{testType === 'cattell_ka' ? 'წინა კითხვა' : 'Предыдущее'}</span>
+            <span className="sm:hidden">{testType === 'cattell_ka' ? 'უკან' : 'Назад'}</span>
           </button>
           
           <div className="flex items-center gap-2 sm:gap-4">
@@ -801,7 +801,7 @@ export default function App() {
               }}
               className="px-3 py-2 border border-slate-300 text-slate-600 rounded text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors hidden sm:block"
             >
-              Пропустить
+              {testType === 'cattell_ka' ? 'გამოტოვება' : 'Пропустить'}
             </button>
             <button 
               onClick={() => {
@@ -817,8 +817,16 @@ export default function App() {
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100' 
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'}`}
             >
-              <span className="hidden sm:inline">Следующее</span>
-              <span className="sm:hidden">Далее</span>
+              <span className="hidden sm:inline">
+                {currentIndex === activeQuestions.length - 1 
+                  ? (testType === 'cattell_ka' ? 'დასრულება' : 'Завершить') 
+                  : (testType === 'cattell_ka' ? 'შემდეგი' : 'Следующее')}
+              </span>
+              <span className="sm:hidden">
+                {currentIndex === activeQuestions.length - 1 
+                  ? (testType === 'cattell_ka' ? 'დასრულება' : 'Завершить') 
+                  : (testType === 'cattell_ka' ? 'შემდეგი' : 'Далее')}
+              </span>
               <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 sm:hidden" />
             </button>
           </div>
