@@ -598,7 +598,7 @@ export default function App() {
                <div className="w-full xl:w-2/5 h-[600px] bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200 flex flex-col">
                 <h4 className="font-bold text-slate-700 mb-4 text-center">Профиль ({activeTestType.toUpperCase()})</h4>
                 <div className="flex-1">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                     <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
                       <PolarGrid stroke="#e2e8f0" />
                       <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: activeTestType === 'bigfive' ? 11 : 9, fontWeight: 600 }} />
