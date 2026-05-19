@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Check, Save, Users, Copy, FileText, Activity } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Save, Users, Copy, FileText, Activity, Download, BrainCircuit } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import ReactMarkdown from 'react-markdown';
+import { toPng } from 'html-to-image';
 import { questions as bigFiveQuestions, traitsSummary as bigFiveSummary, Trait as BigFiveTrait } from './data';
 import { cattellQuestions, cattellSummary, CattellTrait } from './cattellData';
 import { cattellQuestionsKa, cattellSummaryKa } from './cattellDataKa';
@@ -13,6 +15,7 @@ type AnswerMap = Record<number, number>;
 
 export default function App() {
   const [testType, setTestType] = useState<'bigfive' | 'cattell' | 'cattell_ka' | null>(null);
+  const [testStarted, setTestStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [isFinished, setIsFinished] = useState(false);
@@ -28,6 +31,11 @@ export default function App() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const [viewedHistoricalResult, setViewedHistoricalResult] = useState<any>(null);
+
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiCompatibility, setAiCompatibility] = useState<string | null>(null);
+  const [isAnalyzingCompatibility, setIsAnalyzingCompatibility] = useState(false);
 
   const loadHistory = async () => {
     if (!user) return;
@@ -146,6 +154,84 @@ export default function App() {
     });
 
     return percentages;
+  };
+
+  const handleDownload = async () => {
+    const element = document.getElementById('result-report');
+    if (!element) return;
+    try {
+      const filter = (node: HTMLElement) => {
+        const exclusionClasses = ['download-ignore'];
+        return !node.dataset?.html2canvasIgnore;
+      };
+      
+      const dataUrl = await toPng(element, { 
+        cacheBust: true,
+        filter: (node) => {
+          if (node?.hasAttribute && node.hasAttribute('data-html2canvas-ignore') && node.getAttribute('data-html2canvas-ignore') === 'true') {
+            return false;
+          }
+          return true;
+        }
+      });
+      const link = document.createElement('a');
+      link.download = `oceanic-profile-${new Date().toISOString().split('T')[0]}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error('Failed to download image', e);
+    }
+  };
+
+  const handleAnalyze = async (finalScores: Record<string, number>, currentActiveSummary: any, activeTestType: string) => {
+    setIsAnalyzing(true);
+    setAiAnalysis(null);
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testType: activeTestType,
+          scores: finalScores,
+          summary: currentActiveSummary,
+          language: activeTestType === 'cattell_ka' ? 'ka' : 'ru'
+        })
+      });
+      const data = await res.json();
+      if (data.analysis) setAiAnalysis(data.analysis);
+      else throw new Error(data.error);
+    } catch (e) {
+      console.error(e);
+      setAiAnalysis('Ошибка генерации отчета. Попробуйте позже.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleCompatibility = async (userScores: Record<string, number>, partScores: Record<string, number>, currentActiveSummary: any, activeTestType: string) => {
+    setIsAnalyzingCompatibility(true);
+    setAiCompatibility(null);
+    try {
+      const res = await fetch('/api/compatibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testType: activeTestType,
+          userScores,
+          partnerScores: partScores,
+          summary: currentActiveSummary,
+          language: activeTestType === 'cattell_ka' ? 'ka' : 'ru'
+        })
+      });
+      const data = await res.json();
+      if (data.analysis) setAiCompatibility(data.analysis);
+      else throw new Error(data.error);
+    } catch (e) {
+      console.error(e);
+      setAiCompatibility('Ошибка генерации совместимости. Попробуйте позже.');
+    } finally {
+      setIsAnalyzingCompatibility(false);
+    }
   };
 
   const estimatedScores = useMemo(() => calculateScores(), [answers, testType]);
@@ -344,6 +430,55 @@ export default function App() {
     );
   }
 
+  if (testType && !testStarted && !isFinished && !viewedHistoricalResult) {
+    const isGeorgian = testType === 'cattell_ka';
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center">
+        {renderHeader()}
+        <div className="flex-1 flex items-center justify-center p-4 w-full">
+          <div className="max-w-2xl bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-sm w-full">
+            <h2 className="text-3xl font-light text-slate-800 mb-6 text-center">
+              {isGeorgian ? 'ტესტის დაწყებამდე' : 'Перед началом теста'}
+            </h2>
+            <div className="space-y-6 text-slate-600 mb-10">
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold">1</div>
+                <p>{isGeorgian ? 'უპასუხეთ სწრაფად, ბევრი არ იფიქროთ. პირველი, რაც თავში მოგივათ, ყველაზე სწორია.' : 'Отвечайте быстро, долго не задумывайтесь. Первое, что приходит в голову — самое верное.'}</p>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold">2</div>
+                <p>{isGeorgian ? 'მოერიდეთ შუალედურ პასუხებს („არ ვიცი“, „არ ვარ დარწმუნებული“), გამოიყენეთ ისინი მხოლოდ მაშინ, როცა საერთოდ ვერ ირჩევთ სხვა ვარიანტს.' : 'Избегайте промежуточных ответов («не знаю», «не уверен»), используйте их только тогда, когда совсем не можете выбрать другой вариант.'}</p>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold">3</div>
+                <p>{isGeorgian ? 'უპასუხეთ გულწრფელად. ტესტი აფასებს თქვენს პიროვნულ თვისებებს, აქ არ არის „სწორი“ ან „არასწორი“ პასუხები.' : 'Отвечайте честно. Тест оценивает ваши личные качества, здесь нет «правильных» или «неправильных» ответов.'}</p>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 font-bold">4</div>
+                <p>{isGeorgian ? 'მოერიდეთ ისეთ პასუხებს, რომლებიც „სასურველად“ ან „სოციალურად მისაღებად“ გეჩვენებათ.' : 'Избегайте ответов, которые кажутся вам «желанными» или «социально одобряемыми».'}</p>
+              </div>
+            </div>
+            
+            <div className="flex md:flex-row flex-col justify-between items-center gap-4">
+              <button 
+                onClick={() => setTestType(null)}
+                className="w-full md:w-auto px-6 py-3 bg-white text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors border border-slate-200"
+              >
+                {isGeorgian ? 'უკან' : 'Назад к выбору'}
+              </button>
+              <button 
+                onClick={() => setTestStarted(true)}
+                className="w-full md:w-auto px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md"
+              >
+                {isGeorgian ? 'დაწყება' : 'Понятно, начать'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isFinished || viewedHistoricalResult) {
     const activeTestType = viewedHistoricalResult ? viewedHistoricalResult.testType : testType;
     const currentActiveSummary = activeTestType === 'bigfive' ? bigFiveSummary : activeTestType === 'cattell_ka' ? cattellSummaryKa : cattellSummary;
@@ -367,16 +502,24 @@ export default function App() {
         {renderHeader()}
         
         <main className="flex-1 flex flex-col items-center p-4 sm:p-8 lg:p-12 bg-[#F1F5F9] overflow-y-auto">
-          <div className="w-full max-w-[1400px]">
+          <div id="result-report" className="w-full max-w-[1400px] bg-[#F1F5F9] p-4 rounded-xl">
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4" data-html2canvas-ignore="false">
               <div>
                 <h1 className="text-3xl sm:text-4xl font-light text-slate-800 mb-2">{viewedHistoricalResult ? 'Исторический профиль' : 'Ваш психологический профиль'}</h1>
                 <p className="text-slate-500">Результаты основаны на оценке {activeTestType === 'bigfive' ? 'Большой Пятерки (Big Five)' : activeTestType === 'cattell_ka' ? 'კეტელის 16-ფაქტორიანი ტესტი (Cattell)' : '16 Факторов Кеттела'}.</p>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-col md:flex-row items-end gap-2 md:gap-4" data-html2canvas-ignore="true">
+                <button onClick={handleDownload} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-all">
+                  <Download className="w-4 h-4" />
+                  Скачать PDF/Image
+                </button>
+                <button onClick={() => handleAnalyze(finalScores, currentActiveSummary, activeTestType)} disabled={isAnalyzing} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50">
+                  <BrainCircuit className="w-4 h-4" />
+                  {isAnalyzing ? 'Анализ...' : 'ИИ-Интерпретация'}
+                </button>
                 {!savedResult ? (
-                  <button onClick={() => handleSaveResult(finalScores)} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50">
+                  <button onClick={() => handleSaveResult(finalScores)} disabled={isSaving} className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-900 shadow-md transition-all disabled:opacity-50">
                     <Save className="w-4 h-4" />
                     {isSaving ? 'Сохранение...' : 'Сохранить профиль'}
                   </button>
@@ -418,14 +561,34 @@ export default function App() {
                 {partnerError && <p className="text-rose-500 text-xs mt-2">{partnerError}</p>}
                 
                 {compatibility !== null && partnerData && (
-                  <div className="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600">Совместимость с <span className="font-bold text-indigo-700">{partnerData.displayName}</span></p>
-                      <p className="text-xs text-slate-500 mt-1">Основано на сходстве черт личности.</p>
+                  <div className="mt-6 flex flex-col gap-4">
+                    <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-600">Базовая совместимость с <span className="font-bold text-indigo-700">{partnerData.displayName}</span></p>
+                        <p className="text-xs text-slate-500 mt-1">Основано на математическом сходстве черт личности.</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-3xl font-light text-indigo-700">
+                          ~{compatibility}%
+                        </div>
+                        <button onClick={() => handleCompatibility(finalScores, partnerData.results, currentActiveSummary, activeTestType)} disabled={isAnalyzingCompatibility} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-rose-400 to-rose-500 text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50">
+                          <BrainCircuit className="w-4 h-4" />
+                          {isAnalyzingCompatibility ? 'Анализ...' : 'Глубокий анализ ИИ'}
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-3xl font-light text-indigo-700">
-                      ~{compatibility}%
-                    </div>
+                    
+                    {aiCompatibility && (
+                      <div className="p-6 bg-rose-50 rounded-xl border border-rose-100">
+                        <h4 className="font-bold text-rose-800 mb-4 flex items-center gap-2">
+                          <BrainCircuit className="w-5 h-5" /> 
+                          ИИ-Анализ отношений
+                        </h4>
+                        <div className="prose prose-sm prose-rose max-w-none prose-headings:font-bold prose-headings:text-rose-900 prose-p:text-slate-700 prose-li:text-slate-700" data-html2canvas-ignore="false">
+                          <ReactMarkdown>{aiCompatibility}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -479,7 +642,19 @@ export default function App() {
               </div>
             </div>
             
-            <div className="mt-12 flex justify-center pb-12">
+            {aiAnalysis && (
+              <div className="mt-8 p-6 bg-indigo-50 rounded-3xl border border-indigo-100 shadow-sm" data-html2canvas-ignore="false">
+                <h3 className="text-xl font-bold text-indigo-900 mb-6 flex items-center gap-3">
+                  <BrainCircuit className="w-8 h-8 text-indigo-600" />
+                  Ваш ИИ-психологический портрет
+                </h3>
+                <div className="prose prose-indigo max-w-none prose-headings:font-bold prose-headings:text-indigo-900 prose-p:text-slate-700 prose-li:text-slate-700 prose-strong:text-indigo-800">
+                  <ReactMarkdown>{aiAnalysis}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-12 flex justify-center pb-12" data-html2canvas-ignore="true">
               <button 
                 onClick={() => window.location.reload()}
                 className="px-8 py-3 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
