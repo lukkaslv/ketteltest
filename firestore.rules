@@ -6,7 +6,7 @@ service cloud.firestore {
     }
 
     function isSignedIn() {
-      return request.auth != null && request.auth.token.email_verified == true;
+      return request.auth != null;
     }
     
     function isValidId(id) {
@@ -25,15 +25,18 @@ service cloud.firestore {
       let hasBaseKeys = data.keys().hasAll(['userId', 'displayName', 'results', 'updatedAt', 'testType']);
       let validUserId = data.userId == request.auth.uid;
       let validDisplayName = data.displayName is string && data.displayName.size() <= 100;
-      let validTestType = data.testType in ['bigfive', 'cattell'];
+      let validTestType = data.testType in ['bigfive', 'cattell', 'cattell_ka', 'attachment', 'attachment_ka'];
       
       let isBigFive = data.testType == 'bigfive' 
         && data.results.keys().hasAll(['O', 'C', 'E', 'A', 'N']);
         
-      let isCattell = data.testType == 'cattell'
+      let isCattell = (data.testType == 'cattell' || data.testType == 'cattell_ka')
         && data.results.keys().hasAll(['A','B','C','E','F','G','H','I','L','M','N','O','Q1','Q2','Q3','Q4']);
+        
+      let isAttachment = (data.testType == 'attachment' || data.testType == 'attachment_ka')
+        && data.results.keys().hasAll(['anxiety', 'avoidance']);
 
-      return hasBaseKeys && validUserId && validDisplayName && validTestType && (isBigFive || isCattell);
+      return hasBaseKeys && validUserId && validDisplayName && validTestType && (isBigFive || isCattell || isAttachment);
     }
 
     match /results/{userId} {
