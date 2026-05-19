@@ -115,7 +115,7 @@ export default function App() {
       if (q && q.trait) {
         let rawScore = 0;
         if (testType === 'bigfive') {
-            rawScore = q.sign > 0 ? val : (6 - val);
+            rawScore = (q as any).sign > 0 ? val : (6 - val);
         } else {
             rawScore = (q as any).scoring ? (q as any).scoring[val] : 0;
         }
@@ -284,7 +284,8 @@ export default function App() {
         return;
       }
       const data = pDoc.data();
-      if (data.testType !== testType) {
+      const currentTestType = viewedHistoricalResult ? viewedHistoricalResult.testType : testType;
+      if (data.testType !== currentTestType) {
         setPartnerError(`Несовпадение тестов: партнер сдал ${data.testType === 'bigfive' ? 'Большую Пятерку' : data.testType === 'cattell_ka' ? 'Тест Кеттела (Грузинский)' : 'Тест Кеттела'}`);
         return;
       }
@@ -597,8 +598,8 @@ export default function App() {
             <div className="flex flex-col xl:flex-row gap-8">
                <div className="w-full xl:w-2/5 h-[600px] bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200 flex flex-col">
                 <h4 className="font-bold text-slate-700 mb-4 text-center">Профиль ({activeTestType.toUpperCase()})</h4>
-                <div className="flex-1">
-                  <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                <div className="flex-1 w-full min-h-[200px]">
+                  <ResponsiveContainer width="99%" height="100%" minHeight={1} minWidth={1}>
                     <RadarChart cx="50%" cy="50%" outerRadius="65%" data={chartData}>
                       <PolarGrid stroke="#e2e8f0" />
                       <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: activeTestType === 'bigfive' ? 11 : 9, fontWeight: 600 }} />

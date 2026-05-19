@@ -41,7 +41,10 @@ async function startServer() {
 
       const ai = new GoogleGenAI({ apiKey });
 
-      const traitsText = Object.keys(scores).map(t => `${summary[t].title}: ${scores[t]}%`).join("\\n");
+      const traitsText = Object.keys(scores).map(t => {
+        const title = summary && summary[t] ? summary[t].title : t;
+        return `${title}: ${scores[t]}%`;
+      }).join("\\n");
       
       const langPrompt = language === 'ka' ? 'Ответь на грузинском языке.' : 'Ответь на русском языке.';
 
@@ -81,8 +84,14 @@ ${langPrompt} Оформи текст красиво, с использован�
       const ai = new GoogleGenAI({ apiKey });
 
       const traitsList = Object.keys(userScores);
-      const userTraitsText = traitsList.map(t => `${summary[t].title}: ${userScores[t]}%`).join("\\n");
-      const partnerTraitsText = traitsList.map(t => `${summary[t].title}: ${partnerScores[t]}%`).join("\\n");
+      const userTraitsText = traitsList.map(t => {
+        const title = summary && summary[t] ? summary[t].title : t;
+        return `${title}: ${userScores[t]}%`;
+      }).join("\\n");
+      const partnerTraitsText = Object.keys(partnerScores).map(t => {
+        const title = summary && summary[t] ? summary[t].title : t;
+        return `${title}: ${partnerScores[t]}%`;
+      }).join("\\n");
       
       const langPrompt = language === 'ka' ? 'Ответь на грузинском языке.' : 'Ответь на русском языке.';
 
@@ -105,8 +114,8 @@ ${langPrompt} Оформи текст красиво, с использован�
 
       res.json({ analysis: response?.text });
     } catch (error) {
-      console.error("Compatibility error:", error);
-      res.status(500).json({ error: "Failed to generate compatibility analysis" });
+      console.error("Compatibility error full:", error);
+      res.status(500).json({ error: "Failed to generate compatibility analysis: " + String(error) });
     }
   });
 
