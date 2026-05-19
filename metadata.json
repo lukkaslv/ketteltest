@@ -1,0 +1,6 @@
+{
+  "name": "Big Five Assessment",
+  "description": "Полномасштабный тест личности «Большая пятерка» на 50 вопросов. Professional Polish UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

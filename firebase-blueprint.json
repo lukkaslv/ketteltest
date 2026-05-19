@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "UserResult": {
+      "title": "UserResult",
+      "description": "User's personality test result",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "results": {
+           "type": "object",
+           "properties": {
+             "O": { "type": "number" },
+             "C": { "type": "number" },
+             "E": { "type": "number" },
+             "A": { "type": "number" },
+             "N": { "type": "number" }
+           }
+        },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "displayName", "results", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "results/{userId}": {
+      "schema": { "$ref": "#/entities/UserResult" },
+      "description": "Stores user profiles with their test results"
+    }
+  }
+}

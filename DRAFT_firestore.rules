@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidResult(data) {
+      return data.keys().hasAll(['userId', 'displayName', 'results', 'updatedAt']) 
+        && data.keys().size() == 4
+        && data.userId == request.auth.uid
+        && data.displayName is string && data.displayName.size() <= 100
+        && data.results is map
+        && data.results.keys().hasAll(['O', 'C', 'E', 'A', 'N'])
+        && data.results.keys().size() == 5
+        && data.results.O is number && data.results.O >= 0 && data.results.O <= 100
+        && data.results.C is number && data.results.C >= 0 && data.results.C <= 100
+        && data.results.E is number && data.results.E >= 0 && data.results.E <= 100
+        && data.results.A is number && data.results.A >= 0 && data.results.A <= 100
+        && data.results.N is number && data.results.N >= 0 && data.results.N <= 100;
+    }
+
+    match /results/{userId} {
+      // Users can get a specific user's result to compare compatibility
+      allow get: if isSignedIn() && isValidId(userId);
+      
+      allow create: if isSignedIn() 
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidResult(incoming())
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() 
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && existing().userId == request.auth.uid
+        && isValidResult(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'results', 'updatedAt'])
+        && incoming().updatedAt == request.time;
+    }
+  }
+}
